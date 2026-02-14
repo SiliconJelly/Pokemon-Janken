@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポケモンジャンケン</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+  <div id="loading-screen" onclick="startGame()">
+    <h1 class="title-pulse">CLICK TO START</h1>
+    <p>画面をクリックしてバトル開始</p>
+  </div>
+
+  <div id="flash-overlay"></div>
+
+  <main id="game-interface">
+
+    <section class="title-area">
+      <h1>POKÉMON JANKEN</h1>
+    </section>
+
+    <section class="score-board">
+      <div class="score-item"><span>WIN</span><span id="win-count">0</span></div>
+      <div class="score-item"><span>LOSE</span><span id="lose-count">0</span></div>
+      <div class="score-item"><span>DRAW</span><span id="draw-count">0</span></div>
+    </section>
+
+    <section class="battle-screen">
+
+      <div class="arena-stage">
+        <div class="fighter-box">
+          <p class="fighter-label">YOU</p>
+          <img id="player-fighter" src="images/rock.png" class="hidden">
+        </div>
+
+        <div class="vs-text">VS</div>
+
+        <div class="fighter-box">
+          <p class="fighter-label">CPU</p>
+          <img id="cpu-fighter" src="images/rock.png" class="hidden">
+        </div>
+      </div>
+
+      <div class="result-box">
+        <p id="result-text">コマンドを選択...</p>
+      </div>
+    </section>
+
+    <section class="command-area">
+      <div class="button-container">
+        <button onclick="play(0)" id="btn-rock" class="battle-btn">
+          <img src="images/rock.png" alt="Rock">
+          <span>グー</span>
+        </button>
+
+        <button onclick="play(1)" id="btn-scissors" class="battle-btn">
+          <img src="images/scissors.webp" alt="Scissors">
+          <span>チョキ</span>
+        </button>
+
+        <button onclick="play(2)" id="btn-paper" class="battle-btn">
+          <img src="images/paper.webp" alt="Paper">
+          <span>パー</span>
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Game State
+    let wins = 0;
+    let losses = 0;
+    let draws = 0;
+    let isBattling = false; // Prevents spam clicking
+
+    function startGame() {
+      const loader = document.getElementById('loading-screen');
+      const gameUI = document.getElementById('game-interface');
+      loader.style.opacity = '0';
+      setTimeout(() => {
+        loader.style.display = 'none';
+        gameUI.style.opacity = '1';
+        gameUI.style.transform = 'translateY(0)';
+      }, 500);
+    }
+
+    function play(userChoice) {
+      if (isBattling) return; // Ignore clicks if animation is playing
+      isBattling = true;
+
+      const images = ['images/rock.png', 'images/scissors.webp', 'images/paper.webp'];
+      const hands = ['グー', 'チョキ', 'パー'];
+
+      // 1. Setup Battle Stage
+      const playerImg = document.getElementById('player-fighter');
+      const cpuImg = document.getElementById('cpu-fighter');
+      const resultText = document.getElementById('result-text');
+      const flash = document.getElementById('flash-overlay');
+
+      // CPU Choice
+      const cpuChoice = Math.floor(Math.random() * 3);
+
+      // Set Images
+      playerImg.src = images[userChoice];
+      cpuImg.src = images[cpuChoice];
+
+      // Reset Styles for new round
+      playerImg.className = 'fighter-ready'; // Visible but static
+      cpuImg.className = 'fighter-ready';
+      resultText.innerText = "BATTLE!!";
+      resultText.style.color = "#333";
+
+      // 2. TRIGGER CLASH ANIMATION (Wait a split second then lung)
+      setTimeout(() => {
+        playerImg.classList.add('clash-right'); // Move Player Right
+        cpuImg.classList.add('clash-left');     // Move CPU Left
+      }, 50);
+
+      // 3. TRIGGER IMPACT FLASH (At 500ms when they hit)
+      setTimeout(() => {
+        // Flash Screen
+        flash.classList.add('active-flash');
+
+        // Remove Flash after short burst
+        setTimeout(() => {
+          flash.classList.remove('active-flash');
+        }, 300);
+
+        // 4. SHOW RESULT LOGIC
+        calculateResult(userChoice, cpuChoice);
+
+        // Reset Battle Flag so user can play again
+        isBattling = false;
+
+      }, 500); // Matches the CSS animation duration
+    }
+
+    function calculateResult(user, cpu) {
+      const resultText = document.getElementById('result-text');
+      let result = "";
+
+      if (user === cpu) {
+        result = "ひきわけ！ (Draw)";
+        draws++;
+        document.getElementById('draw-count').innerText = draws;
+        resultText.style.color = "#333";
+      } else if (
+        (user === 0 && cpu === 1) ||
+        (user === 1 && cpu === 2) ||
+        (user === 2 && cpu === 0)
+      ) {
+        result = "こうかは ばつぐんだ！ (WIN!)";
+        wins++;
+        document.getElementById('win-count').innerText = wins;
+        resultText.style.color = "#d32f2f";
+      } else {
+        result = "目の前が 真っ暗になった... (LOSE)";
+        losses++;
+        document.getElementById('lose-count').innerText = losses;
+        resultText.style.color = "#3b4cca";
+      }
+      resultText.innerText = result;
+    }
+  </script>
+</body>
+
+</html>
