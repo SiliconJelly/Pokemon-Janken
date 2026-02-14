@@ -4,168 +4,380 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ポケモンジャンケン</title>
+  <title>ポケモンジャンケン - Sandy's Valentine</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22%23ce2211%22/><circle cx=%2250%22 cy=%2250%22 r=%2250%22 fill=%22white%22 clip-path=%22inset(50%25 0 0 0)%22/><path d=%22M0 50 L100 50%22 stroke=%22%23333%22 stroke-width=%228%22/><circle cx=%2250%22 cy=%2250%22 r=%2214%22 fill=%22white%22 stroke=%22%23333%22 stroke-width=%226%22/></svg>">
   <link rel="stylesheet" href="css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-  <div id="loading-screen" onclick="startGame()">
+  <audio id="sfx-win" src="assets/when-won.mp3"></audio>
+  <audio id="sfx-lose" src="assets/when-lost.mp3"></audio>
+  <audio id="sfx-midgame" src="assets/giving-advice-before-last-round.mp3"></audio>
+
+  <div id="loading-screen" onclick="triggerIntro()">
     <h1 class="title-pulse">CLICK TO START</h1>
-    <p>画面をクリックしてバトル開始</p>
+    <p>画面をクリックしてスタート</p>
+  </div>
+
+  <div id="dialogue-overlay" class="hidden">
+    <div class="character-container">
+      <img id="sandy-img" src="assets/before-start-prompt.png" alt="Sandy">
+    </div>
+    <div class="dialogue-box glass-panel">
+      <p id="dialogue-text">...</p>
+      <button id="dialogue-next-btn" onclick="advanceDialogue()">次へ ▼</button>
+    </div>
+  </div>
+
+  <div id="setup-screen" class="hidden glass-panel">
+    <h2>プロフィール設定</h2>
+
+    <div class="input-group">
+      <label>名前 (Name)</label>
+      <input type="text" id="player-name" placeholder="サトシ" maxlength="8">
+    </div>
+
+    <div class="input-group">
+      <label>性別 (Gender)</label>
+      <div class="gender-options">
+        <button onclick="setGender('boy', this)">男の子</button>
+        <button onclick="setGender('girl', this)">女の子</button>
+        <button onclick="setGender('secret', this)">ヒ・ミ・ツ</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>ラウンド数 (Rounds)</label>
+      <div class="round-options">
+        <button onclick="setRounds(5, this)">サクッと 5回</button>
+        <button onclick="setRounds(10, this)">じっくり 10回</button>
+      </div>
+    </div>
+
+    <button class="start-battle-btn" onclick="finalizeSetup()">バトル開始！</button>
   </div>
 
   <div id="flash-overlay"></div>
+  <div id="elemental-fx"></div>
 
-  <main id="game-interface">
+  <main id="game-interface" class="hidden glass-panel-main">
 
-    <section class="title-area">
-      <h1>POKÉMON JANKEN</h1>
-    </section>
+    <section class="hud-area">
+      <div class="hp-container">
+        <div class="hp-label">Passion Meter (やる気)</div>
+        <div class="hp-bar-frame">
+          <div id="player-hp-bar" class="hp-fill hp-pink" style="width: 100%;"></div>
+        </div>
+        <div class="hp-icon">❤️</div>
+      </div>
 
-    <section class="score-board">
-      <div class="score-item"><span>WIN</span><span id="win-count">0</span></div>
-      <div class="score-item"><span>LOSE</span><span id="lose-count">0</span></div>
-      <div class="score-item"><span>DRAW</span><span id="draw-count">0</span></div>
+      <div class="hud-vs">VS</div>
+
+      <div class="hp-container">
+        <div class="hp-label">Charge Meter (電気)</div>
+        <div class="hp-bar-frame">
+          <div id="cpu-hp-bar" class="hp-fill hp-yellow" style="width: 100%;"></div>
+        </div>
+        <div class="hp-icon">⚡️</div>
+      </div>
     </section>
 
     <section class="battle-screen">
-
       <div class="arena-stage">
         <div class="fighter-box">
-          <p class="fighter-label">YOU</p>
-          <img id="player-fighter" src="images/rock.png" class="hidden">
+          <p class="fighter-label" id="label-player-name">YOU</p>
+          <img id="player-fighter" src="assets/rock.png" class="hidden">
         </div>
 
-        <div class="vs-text">VS</div>
-
         <div class="fighter-box">
-          <p class="fighter-label">CPU</p>
-          <img id="cpu-fighter" src="images/rock.png" class="hidden">
+          <p class="fighter-label">SANDY (CPU)</p>
+          <img id="cpu-fighter" src="assets/rock.png" class="hidden">
         </div>
       </div>
 
       <div class="result-box">
-        <p id="result-text">コマンドを選択...</p>
+        <p id="result-text">コマンドを選択してね！</p>
       </div>
     </section>
 
     <section class="command-area">
       <div class="button-container">
-        <button onclick="play(0)" id="btn-rock" class="battle-btn">
-          <img src="images/rock.png" alt="Rock">
+        <button onclick="play(0)" class="battle-btn">
+          <img src="assets/rock.png" alt="Rock">
           <span>グー</span>
         </button>
-
-        <button onclick="play(1)" id="btn-scissors" class="battle-btn">
-          <img src="images/scissors.webp" alt="Scissors">
+        <button onclick="play(1)" class="battle-btn">
+          <img src="assets/scissors.webp" alt="Scissors">
           <span>チョキ</span>
         </button>
-
-        <button onclick="play(2)" id="btn-paper" class="battle-btn">
-          <img src="images/paper.webp" alt="Paper">
+        <button onclick="play(2)" class="battle-btn">
+          <img src="assets/paper.webp" alt="Paper">
           <span>パー</span>
         </button>
       </div>
     </section>
-
   </main>
 
-  <script>
-    // Game State
-    let wins = 0;
-    let losses = 0;
-    let draws = 0;
-    let isBattling = false; // Prevents spam clicking
+  <div id="game-over-screen" class="hidden">
+    <h1 id="end-title">WIN!</h1>
+    <div id="end-visual"></div>
+    <div class="end-menu">
+      <button onclick="restartGame()">もう一度遊ぶ</button>
+      <button onclick="shareResult()">友達に教える</button>
+    </div>
+  </div>
 
-    function startGame() {
-      const loader = document.getElementById('loading-screen');
-      const gameUI = document.getElementById('game-interface');
-      loader.style.opacity = '0';
-      setTimeout(() => {
-        loader.style.display = 'none';
-        gameUI.style.opacity = '1';
-        gameUI.style.transform = 'translateY(0)';
-      }, 500);
+  <script>
+    // --- GAME CONFIG & STATE ---
+    let playerName = "トレーナー";
+    let playerGender = "secret";
+    let totalRounds = 5;
+    let currentRound = 1;
+    let playerHP = 100;
+    let cpuHP = 100;
+    let isBattling = false;
+    let dialogueStep = 0;
+
+    // DIFFICULTY CONTROL
+    // We store attempts in localStorage so it persists even if they refresh!
+    let gameAttempts = parseInt(localStorage.getItem('jankenAttempts')) || 0;
+
+    // --- DOM ELEMENTS ---
+    const dialogueOverlay = document.getElementById('dialogue-overlay');
+    const dialogueText = document.getElementById('dialogue-text');
+    const sandyImg = document.getElementById('sandy-img');
+    const setupScreen = document.getElementById('setup-screen');
+    const gameUI = document.getElementById('game-interface');
+    const playerBar = document.getElementById('player-hp-bar');
+    const cpuBar = document.getElementById('cpu-hp-bar');
+    const fxContainer = document.getElementById('elemental-fx');
+
+    const IMAGES = {
+      rock: 'assets/rock.png',
+      scissors: 'assets/scissors.webp',
+      paper: 'assets/paper.webp',
+      intro: 'assets/before-start-prompt.png',
+      mid: 'assets/round-4-or-8-strategy.png',
+      lose: 'assets/when-lost-thunderbolt.webp',
+      winBG: 'assets/when-won-confetti-effect.gif'
+    };
+
+    // --- INTRO & SETUP ---
+    function triggerIntro() {
+      document.getElementById('loading-screen').style.display = 'none';
+      dialogueOverlay.classList.remove('hidden');
+      updateDialogue();
     }
 
+    const introScript = [
+      "ヤッホー！サンディだよ⚡️",
+      "ねぇねぇ、今年のバレンタインはどうする予定？",
+      "...って、あ！名前聞くの忘れてた！"
+    ];
+
+    function updateDialogue() {
+      if (dialogueStep < introScript.length) {
+        dialogueText.innerText = introScript[dialogueStep];
+      } else {
+        dialogueOverlay.classList.add('hidden');
+        setupScreen.classList.remove('hidden');
+      }
+    }
+
+    function advanceDialogue() {
+      dialogueStep++;
+      updateDialogue();
+    }
+
+    function setGender(g, btn) {
+      playerGender = g;
+      document.querySelectorAll('.gender-options button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function setRounds(r, btn) {
+      totalRounds = r;
+      document.querySelectorAll('.round-options button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function finalizeSetup() {
+      const inputName = document.getElementById('player-name').value;
+      if (inputName) playerName = inputName;
+      document.getElementById('label-player-name').innerText = playerName.toUpperCase();
+      setupScreen.classList.add('hidden');
+      gameUI.classList.remove('hidden');
+    }
+
+    // --- BATTLE LOGIC (RIGGED FOR STORY) ---
     function play(userChoice) {
-      if (isBattling) return; // Ignore clicks if animation is playing
+      if (isBattling) return;
       isBattling = true;
 
-      const images = ['images/rock.png', 'images/scissors.webp', 'images/paper.webp'];
-      const hands = ['グー', 'チョキ', 'パー'];
+      const hands = [IMAGES.rock, IMAGES.scissors, IMAGES.paper];
 
-      // 1. Setup Battle Stage
-      const playerImg = document.getElementById('player-fighter');
-      const cpuImg = document.getElementById('cpu-fighter');
-      const resultText = document.getElementById('result-text');
-      const flash = document.getElementById('flash-overlay');
+      // --- DIFFICULTY LOGIC ---
+      // 0=Rock, 1=Scissors, 2=Paper
+      // Winning against user: If user=0(Rock), CPU needs 2(Paper).
+      // Lose against user: If user=0(Rock), CPU needs 1(Scissors).
 
-      // CPU Choice
-      const cpuChoice = Math.floor(Math.random() * 3);
+      let cpuChoice;
+      const winningMove = (userChoice === 0) ? 2 : (userChoice === 1) ? 0 : 1;
+      const losingMove = (userChoice === 0) ? 1 : (userChoice === 1) ? 2 : 0;
 
-      // Set Images
-      playerImg.src = images[userChoice];
-      cpuImg.src = images[cpuChoice];
+      const rand = Math.random();
 
-      // Reset Styles for new round
-      playerImg.className = 'fighter-ready'; // Visible but static
-      cpuImg.className = 'fighter-ready';
-      resultText.innerText = "BATTLE!!";
-      resultText.style.color = "#333";
+      if (gameAttempts === 0) {
+        // 1st Game: HARD MODE (70% chance to counter user)
+        if (rand < 0.7) cpuChoice = winningMove;
+        else if (rand < 0.9) cpuChoice = userChoice; // Draw
+        else cpuChoice = losingMove;
+      } else if (gameAttempts === 1) {
+        // 2nd Game: NORMAL (Pure Random)
+        cpuChoice = Math.floor(Math.random() * 3);
+      } else {
+        // 3rd+ Game: EASY MODE (40% chance to lose on purpose)
+        if (rand < 0.4) cpuChoice = losingMove;
+        else cpuChoice = Math.floor(Math.random() * 3);
+      }
 
-      // 2. TRIGGER CLASH ANIMATION (Wait a split second then lung)
+      // --- VISUALS ---
+      const pImg = document.getElementById('player-fighter');
+      const cImg = document.getElementById('cpu-fighter');
+      pImg.src = hands[userChoice];
+      cImg.src = hands[cpuChoice];
+      pImg.className = 'fighter-ready';
+      cImg.className = 'fighter-ready';
+
+      triggerElementalEffect(userChoice);
+
       setTimeout(() => {
-        playerImg.classList.add('clash-right'); // Move Player Right
-        cpuImg.classList.add('clash-left');     // Move CPU Left
-      }, 50);
+        pImg.classList.add('clash-right');
+        cImg.classList.add('clash-left');
+      }, 100);
 
-      // 3. TRIGGER IMPACT FLASH (At 500ms when they hit)
       setTimeout(() => {
-        // Flash Screen
+        const flash = document.getElementById('flash-overlay');
         flash.classList.add('active-flash');
+        setTimeout(() => flash.classList.remove('active-flash'), 200);
 
-        // Remove Flash after short burst
-        setTimeout(() => {
-          flash.classList.remove('active-flash');
-        }, 300);
+        // DAMAGE CALC
+        let dmgAmount = totalRounds === 5 ? 25 : 12;
+        const resultText = document.getElementById('result-text');
 
-        // 4. SHOW RESULT LOGIC
-        calculateResult(userChoice, cpuChoice);
+        if (userChoice === cpuChoice) {
+          resultText.innerText = "DRAW! (あいこ)";
+          resultText.style.color = "#333";
+        } else if (
+          (userChoice === 0 && cpuChoice === 1) ||
+          (userChoice === 1 && cpuChoice === 2) ||
+          (userChoice === 2 && cpuChoice === 0)
+        ) {
+          resultText.innerText = "CRITICAL HIT!";
+          resultText.style.color = "#d32f2f";
+          cpuHP = Math.max(0, cpuHP - dmgAmount);
+        } else {
+          resultText.innerText = "OUCH...";
+          resultText.style.color = "#3b4cca";
+          playerHP = Math.max(0, playerHP - dmgAmount);
+        }
 
-        // Reset Battle Flag so user can play again
+        updateBars();
+        checkGameState();
         isBattling = false;
-
-      }, 500); // Matches the CSS animation duration
+      }, 600);
     }
 
-    function calculateResult(user, cpu) {
-      const resultText = document.getElementById('result-text');
-      let result = "";
+    function updateBars() {
+      playerBar.style.width = playerHP + "%";
+      cpuBar.style.width = cpuHP + "%";
+      if (playerHP < 30) playerBar.style.background = "red";
+      if (cpuHP < 30) cpuBar.style.background = "red";
+    }
 
-      if (user === cpu) {
-        result = "ひきわけ！ (Draw)";
-        draws++;
-        document.getElementById('draw-count').innerText = draws;
-        resultText.style.color = "#333";
-      } else if (
-        (user === 0 && cpu === 1) ||
-        (user === 1 && cpu === 2) ||
-        (user === 2 && cpu === 0)
-      ) {
-        result = "こうかは ばつぐんだ！ (WIN!)";
-        wins++;
-        document.getElementById('win-count').innerText = wins;
-        resultText.style.color = "#d32f2f";
+    function triggerElementalEffect(type) {
+      const fxDiv = document.createElement('div');
+      fxContainer.innerHTML = '';
+      if (type === 0) fxDiv.className = 'fx-rock';
+      if (type === 1) fxDiv.className = 'fx-grass';
+      if (type === 2) fxDiv.className = 'fx-ice';
+      fxContainer.appendChild(fxDiv);
+      setTimeout(() => fxDiv.remove(), 500);
+    }
+
+    function checkGameState() {
+      currentRound++;
+      if (cpuHP <= 0) { triggerEndGame(true); return; }
+      if (playerHP <= 0) { triggerEndGame(false); return; }
+
+      const midTrigger = (totalRounds === 5 && currentRound === 4) || (totalRounds === 10 && currentRound === 8);
+      if (midTrigger) { triggerMidGameDialogue(); }
+    }
+
+    function triggerMidGameDialogue() {
+      dialogueOverlay.classList.remove('hidden');
+      sandyImg.src = IMAGES.mid;
+      document.getElementById('sfx-midgame').play();
+
+      if (playerHP < cpuHP) {
+        dialogueText.innerText = "ホントはね、キミのトレーナーになりたいんだけど... その弱さじゃムリかも？ 勝つ方法、知らないの？";
       } else {
-        result = "目の前が 真っ暗になった... (LOSE)";
-        losses++;
-        document.getElementById('lose-count').innerText = losses;
-        resultText.style.color = "#3b4cca";
+        dialogueText.innerText = `あと少しだね、${playerName}... これが終わったら一緒に温泉行こっか♨️ キミ、ちょっと疲れてる顔してるもん。`;
       }
-      resultText.innerText = result;
+
+      const btn = document.getElementById('dialogue-next-btn');
+      btn.onclick = function () {
+        dialogueOverlay.classList.add('hidden');
+        sandyImg.src = IMAGES.intro;
+        btn.onclick = advanceDialogue;
+      };
+    }
+
+    function triggerEndGame(isWin) {
+      const endScreen = document.getElementById('game-over-screen');
+      const endTitle = document.getElementById('end-title');
+
+      // INCREMENT ATTEMPTS ON GAME OVER
+      gameAttempts++;
+      localStorage.setItem('jankenAttempts', gameAttempts);
+
+      setTimeout(() => {
+        endScreen.classList.remove('hidden');
+
+        if (isWin) {
+          document.getElementById('sfx-win').play();
+          endTitle.innerText = "VICTORY!";
+          endTitle.style.color = "#ff69b4";
+          document.getElementById('end-visual').style.backgroundImage = `url(${IMAGES.winBG})`;
+
+          dialogueOverlay.classList.remove('hidden');
+          sandyImg.src = IMAGES.intro;
+          dialogueText.innerText = `あーあ、負けちゃった...⚡️ でも、キミになら負けてもいいかな。ねぇ、このピカチュウの『バレンタイン』になってくれる？`;
+        } else {
+          document.getElementById('sfx-lose').play();
+          endTitle.innerText = "DEFEAT...";
+          endTitle.style.color = "#333";
+
+          dialogueOverlay.classList.remove('hidden');
+          sandyImg.src = IMAGES.lose;
+          dialogueText.innerText = `せっかくデートできると思ったのに... 弱すぎ！そんなキミには... お仕置きだー！！ 10万ボルトーーッ！⚡️⚡️`;
+        }
+
+        const btn = document.getElementById('dialogue-next-btn');
+        btn.onclick = function () { dialogueOverlay.classList.add('hidden'); };
+      }, 1000);
+    }
+
+    function restartGame() {
+      location.reload();
+    }
+
+    function shareResult() {
+      const text = `ポケモンジャンケンでSandyとバトルしたよ！勝敗は...秘密！ #YukemuriCamp`;
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
     }
   </script>
 </body>
